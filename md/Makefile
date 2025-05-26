@@ -1,6 +1,5 @@
-CFLAGS=-g
-
 md2.out: md2.c
 	$(CC) $(CFLAGS) md2.c -o md2.out
 
-
+md4.out: md4.c
+	$(CC) $(CFLAGS) md4.c -o md4.out
