@@ -5,6 +5,8 @@
 #include <stdlib.h>
 
 #define u8   uint8_t
+#define u16  uint16_t
+#define u32  uint32_t
 #define u64  uint64_t
 #define u128 __int128
 
@@ -50,43 +52,52 @@ static u8 S[256] = {
 
 void MD2(u8* msg, u64 len, u8* md) {
   u8  P  = 16 - (len % 16); // padding length
-  u64 N  = len + P; // padded msg length
-  u64 Np = N + 16; // padded msg length + checksum
-  u8* M  = malloc(Np); // msg with padding and checksum
-  u8* C  = M + N; // checksum
-
-  // print_hexstring("S =", S, Np);
+  u64 N  = len + P;         // padded msg length
+  u64 Np = N + 16;          // padded msg length + checksum
+  u8* M  = malloc(Np);      // msg with padding and checksum
+  u8* C  = M + N;           // checksum
 
   memcpy(M, msg, len);
   memset(M+len, P, P);
+
+  // NOTE: from RFC1423, sect 2.1:
+  //  An error has been identified in RFC 1319.  The
+  //  statement in the text of Section 3.2 which reads "Set C[j] to S[c xor L]"
+  //  should read "Set C[j] to S[c xor L] xor C[j]".  Note that the C
+  //  source code in the appendix of RFC 1319 is correct.
+
+  // 3.2 Step 2. Append Checksum
   memset(C, 0, 16);
-
   u8 L = 0;
-  for (u64 i = 0; i < N/16; i++)
-    for (u64 j = 0; j < 16; j++)
-      L = C[j] ^= S[M[i*16+j] ^ L]; // THIS IS NOT AS IN THE RFC! (no ^= only =)
-  // print_hexstring("M=",M, Np);
+  for (u64 i = 0; i < N/16; i++) {
+    for (u64 j = 0; j < 16; j++) {
+      u8 c = M[i*16+j];
+      C[j] ^= S[M[i*16+j] ^ L];
+      L = C[j];
+    }
+  }
 
+  // 3.3 Step 3. Initialize MD Buffer
   u8 X[48] = {0};
+
+  // 3.4 Step 4. Process Message in 16-Byte Blocks
   for (u64 i = 0; i < Np/16; i++) {
     for (u64 j = 0; j < 16; j++) {
       X[16+j] = M[i*16+j];
       X[32+j] = M[i*16+j] ^ X[j];
     }
-    // print_hexstring("X copy in=",X, 48);
 
     u8 t = 0;
     for (u64 j = 0; j < 18; j++) {
       for (u64 k = 0; k < 48; k++)
-        t = X[k] ^= S[t];
-      t += j; // modulo 256
+        t = X[k] = X[k] ^ S[t];
+      t += j; // modulo 256 = sizeof(u8)
     }
-    // print_hexstring("X after perm=",X, 48);
-
   }
 
-  // print_hexstring("X=",X, 48);
+  // 3.5 Step 5. Output
   memcpy(md,X,16);
+
   free(M);
 }
 
@@ -106,7 +117,7 @@ int main() {
   for (u64 i = 0; i < num_tests; i++) {
     u64 len = strlen(tests[i]);
     MD2(tests[i], len, md);
-    printf("msg='%s' (%d)\n", tests[i], len);
+    printf("msg (%d)=\n  %s\n", len, tests[i]);
     print_hexstring("md=", md, 16);
   }
 }
