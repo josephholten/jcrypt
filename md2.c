@@ -4,10 +4,11 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#define u64 uint64_t
+#define u8   uint8_t
+#define u64  uint64_t
 #define u128 __int128
 
-void print_hexchar(char nibble) {
+void print_hexchar(u8 nibble) {
   nibble &= 0x0F;
   if (nibble < 10) {
     putchar('0' + nibble);
@@ -16,7 +17,9 @@ void print_hexchar(char nibble) {
   }
 }
 
-void print_hexstring(char* hs, u64 len) {
+void print_hexstring(char* msg, u8* hs, u64 len) {
+  if (msg)
+    printf("%s\n  ", msg);
   for (u64 i = 0; i < len; i++) {
     print_hexchar(hs[i] >> 4); // high
     print_hexchar(hs[i] & 0x0F); // low
@@ -24,7 +27,7 @@ void print_hexstring(char* hs, u64 len) {
   putchar('\n');
 }
 
-static unsigned char S[256] = {
+static u8 S[256] = {
   41, 46, 67, 201, 162, 216, 124, 1, 61, 54, 84, 161, 236, 240, 6,
   19, 98, 167, 5, 243, 192, 199, 115, 140, 152, 147, 43, 217, 188,
   76, 130, 202, 30, 155, 87, 60, 253, 212, 224, 22, 103, 66, 111, 24,
@@ -45,68 +48,65 @@ static unsigned char S[256] = {
   31, 26, 219, 153, 141, 51, 159, 17, 131, 20
 };
 
-void MD2(char* msg, u64 len, char* md) {
-  char P = 16 - (len % 16); // padding length
-  u64 N = len + P; // padded msg length
+void MD2(u8* msg, u64 len, u8* md) {
+  u8  P  = 16 - (len % 16); // padding length
+  u64 N  = len + P; // padded msg length
   u64 Np = N + 16; // padded msg length + checksum
-  char* M = malloc(Np); // msg with padding and checksum
+  u8* M  = malloc(Np); // msg with padding and checksum
+  u8* C  = M + N; // checksum
 
-  // copy message
+  // print_hexstring("S =", S, Np);
+
   memcpy(M, msg, len);
+  memset(M+len, P, P);
+  memset(C, 0, 16);
 
-  // set padding bytes
-  for (u64 i = len; i < len + P; i++)
-    M[i] = P;
+  u8 L = 0;
+  for (u64 i = 0; i < N/16; i++)
+    for (u64 j = 0; j < 16; j++)
+      L = C[j] ^= S[M[i*16+j] ^ L]; // THIS IS NOT AS IN THE RFC! (no ^= only =)
+  // print_hexstring("M=",M, Np);
 
-  // compute checksum
-  char* C = M + N;
-  for (u64 i = 0; i < 16; i++)
-    C[i] = 0;
-
-  char L = 0;
-  for (u64 i = 0; i < N/16; i++) {
-    for (u64 j = 0; j < 16; j++) {
-      char c = M[i*16+j];
-      C[j] = S[c ^ L];
-      L = C[j];
-    }
-  }
-  printf("M\n");
-  print_hexstring(M, Np);
-
-  char X[48] = {0};
+  u8 X[48] = {0};
   for (u64 i = 0; i < Np/16; i++) {
-    // copy block i into X
     for (u64 j = 0; j < 16; j++) {
       X[16+j] = M[i*16+j];
-      X[32+j] = X[16+j] ^ X[j];
+      X[32+j] = M[i*16+j] ^ X[j];
     }
-    printf("X copy in\n");
-    print_hexstring(X, 48);
+    // print_hexstring("X copy in=",X, 48);
 
-    char t = 0;
+    u8 t = 0;
     for (u64 j = 0; j < 18; j++) {
-      for (u64 k = 0; k < 48; k++) {
-        char temp = X[k] ^ S[t];
-        t = temp;
-        X[k] = temp;
-      }
-      t += j; // modulo 256 = 2^sizeof(char)
+      for (u64 k = 0; k < 48; k++)
+        t = X[k] ^= S[t];
+      t += j; // modulo 256
     }
-
-    printf("X after permute\n");
-    print_hexstring(X, 48);
+    // print_hexstring("X after perm=",X, 48);
 
   }
 
+  // print_hexstring("X=",X, 48);
   memcpy(md,X,16);
+  free(M);
 }
 
 
 int main() {
-  char msg[] = "";
-  char md[16];
-  MD2(msg, 0, md);
-  printf("md\n");
-  print_hexstring(md, 16);
+  u8* tests[] = {
+    "",
+    "a",
+    "abc",
+    "message digest",
+    "abcdefghijklmnopqrstuvwxyz",
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+    "12345678901234567890123456789012345678901234567890123456789012345678901234567890",
+  };
+  u64 num_tests = sizeof(tests)/sizeof(u8*);
+  u8 md[16];
+  for (u64 i = 0; i < num_tests; i++) {
+    u64 len = strlen(tests[i]);
+    MD2(tests[i], len, md);
+    printf("msg='%s' (%d)\n", tests[i], len);
+    print_hexstring("md=", md, 16);
+  }
 }
