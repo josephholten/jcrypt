@@ -29,16 +29,6 @@ void print_hexstring(char* msg, u8* hs, u64 len) {
   putchar('\n');
 }
 
-#define ROTL(x, n) (((x) << (n)) | ((x) >> (32-(n))))
-
-#define F(X,Y,Z) (X & Y) | ((~X) & Z)
-#define G(X,Y,Z) (X & Y) | (X & Z) | (Y & Z)
-#define H(X,Y,Z) (X ^ Y) ^ Z
-
-#define FF(a,b,c,d,xk,s) { a += F(b,c,d) + xk; a = ROTL(a, s); }
-#define GG(a,b,c,d,xk,s) { a += G(b,c,d) + xk + 0x5A827999; a = ROTL(a,s); }
-#define HH(a,b,c,d,xk,s) { a += H(b,c,d) + xk + 0x6ED9EBA1; a = ROTL(a,s); }
-
 #define S11 3
 #define S12 7
 #define S13 11
@@ -51,6 +41,37 @@ void print_hexstring(char* msg, u8* hs, u64 len) {
 #define S32 9
 #define S33 11
 #define S34 15
+
+/* F, G and H are basic MD4 functions.
+ */
+#define F(x, y, z) (((x) & (y)) | ((~x) & (z)))
+#define G(x, y, z) (((x) & (y)) | ((x) & (z)) | ((y) & (z)))
+#define H(x, y, z) ((x) ^ (y) ^ (z))
+
+/* ROTATE_LEFT rotates x left n bits.
+ */
+#define ROTATE_LEFT(x, n) (((x) << (n)) | ((x) >> (32-(n))))
+
+/* FF, GG and HH are transformations for rounds 1, 2 and 3 */
+/* Rotation is separate from addition to prevent recomputation */
+
+#define FF(a, b, c, d, x, s) { \
+    (a) += F ((b), (c), (d)) + (x); \
+    (a) = ROTATE_LEFT ((a), (s)); \
+  }
+#define GG(a, b, c, d, x, s) { \
+    (a) += G ((b), (c), (d)) + (x) + (u32)0x5a827999; \
+    (a) = ROTATE_LEFT ((a), (s)); \
+  }
+#define HH(a, b, c, d, x, s) { \
+    (a) += H ((b), (c), (d)) + (x) + (u32)0x6ed9eba1; \
+    (a) = ROTATE_LEFT ((a), (s)); \
+  }
+
+
+
+
+
 
 void MD4(char* msg, u64 len, u8* md) {
   // pad to divisible by 64, pad at least one byte
@@ -75,10 +96,9 @@ void MD4(char* msg, u64 len, u8* md) {
   u32 d = 0x10325476;
 
   // 3.4 Step 4. Process Message in 16-Word Blocks
-  u8 x[16];
-  for (u64 i = 0; i < N/16; i++) {
-    for (u64 j = 0; j < 16; j++)
-      x[j] = M[i*16+j];
+  u32 x[16];
+  for (u64 i = 0; i < N; i += 64) {
+    memcpy(x, &M[i], 64);
 
     u32 aa = a, bb = b, cc = c, dd = d;
 
@@ -152,13 +172,26 @@ void MD4(char* msg, u64 len, u8* md) {
 
 int main() {
   u8* tests[] = {
+    /*
     "",
     "a",
     "abc",
     "message digest",
     "abcdefghijklmnopqrstuvwxyz",
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012",
+    */
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123",
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234",
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345",
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123467",
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234678",
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345678901",
+    "123456789012345678901234567890123456789012345678901234567890123456789",
+    /*
+    "1234567890123456789012345678901234567890123456789012345678901234567890123456789",
     "12345678901234567890123456789012345678901234567890123456789012345678901234567890",
+    */
   };
   u64 num_tests = sizeof(tests)/sizeof(u8*);
   u8 md[16];
