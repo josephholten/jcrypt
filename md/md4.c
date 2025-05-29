@@ -128,7 +128,8 @@ static void MD4Transform (u32* state, u8* block) {
 
 void MD4(char* msg, u64 len, u8* md) {
   // pad to 56 mod 64, padding at least one byte, then add 8
-  u64 P  = (len < 56) ? (56 - len) : (120 - len);
+  u64 mlen = len % 64;
+  u64 P  = (mlen < 56) ? (56 - mlen) : (56 + 64 - mlen);
   u64 N  = len + P + 8;
   u8* M  = malloc(N); // padded msg 
 
