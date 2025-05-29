@@ -12,7 +12,7 @@
 
 typedef struct {
   u32 state[4];                                   /* state (ABCD) */
-  u32 count[2];        /* number of bits, modulo 2^64 (lsb first) */
+  u64 count;        /* number of bits, modulo 2^64 (lsb first) */
   unsigned char buffer[64];                         /* input buffer */
 } MD4_CTX;
 
@@ -64,37 +64,11 @@ static unsigned char PADDING[64] = {
     (a) = ROTATE_LEFT ((a), (s)); \
   }
 
-/* Encodes input (u32) into output (unsigned char). Assumes len is
-     a multiple of 4.
- */
-static void Encode (u8* output, u32* input, u32 len) {
-  unsigned int i, j;
-
-  for (i = 0, j = 0; j < len; i++, j += 4) {
-    output[j] = (unsigned char)(input[i] & 0xff);
-    output[j+1] = (unsigned char)((input[i] >> 8) & 0xff);
-    output[j+2] = (unsigned char)((input[i] >> 16) & 0xff);
-    output[j+3] = (unsigned char)((input[i] >> 24) & 0xff);
-  }
-}
-
-/* Decodes input (unsigned char) into output (u32). Assumes len is
-     a multiple of 4.
- */
-static void Decode (u32* output, u8* input, u32 len) {
-  unsigned int i, j;
-
-  for (i = 0, j = 0; j < len; i++, j += 4)
-    output[i] = ((u32)input[j]) | (((u32)input[j+1]) << 8) |
-      (((u32)input[j+2]) << 16) | (((u32)input[j+3]) << 24);
-}
-
-
 
 /* MD4 initialization. Begins an MD4 operation, writing a new context.
  */
 void MD4Init (MD4_CTX* context) {
-  context->count[0] = context->count[1] = 0;
+  context->count = 0;
 
   /* Load magic initialization constants.
    */
@@ -109,7 +83,7 @@ void MD4Init (MD4_CTX* context) {
 static void MD4Transform (u32* state, u8* block) {
   u32 a = state[0], b = state[1], c = state[2], d = state[3], x[16];
 
-  Decode (x, block, 64);
+  memcpy(x, block, 64);
 
   /* Round 1 */
   FF (a, b, c, d, x[ 0], S11); /* 1 */
@@ -172,14 +146,11 @@ static void MD4Transform (u32* state, u8* block) {
 }
 
 void MD4Update (MD4_CTX* context, u8* input, u32 inputLen) {
-  u32 i, index, partLen;
+  u64 i, index, partLen;
 
   /* Compute number of bytes mod 64 */
-  index = (u32)((context->count[0] >> 3) & 0x3F);
-  /* Update number of bits */
-  if ((context->count[0] += ((u32)inputLen << 3)) < ((u32)inputLen << 3))
-    context->count[1]++;
-  context->count[1] += ((u32)inputLen >> 29);
+  index = (context->count >> 3) & 0x3F;
+  context->count += inputLen << 3;
 
   partLen = 64 - index;
 
@@ -203,20 +174,20 @@ void MD4Update (MD4_CTX* context, u8* input, u32 inputLen) {
 
 void MD4Final (u8* digest, MD4_CTX* context) {
   u8 bits[8];
-  u32 index, padLen;
+  u64 index, padLen;
 
-  Encode (bits, context->count, 8);
+  memcpy(bits, &context->count, 8);
 
   /* Pad out to 56 mod 64.
    */
-  index = (u32)((context->count[0] >> 3) & 0x3f);
+  index = (context->count >> 3) & 0x3f;
   padLen = (index < 56) ? (56 - index) : (120 - index);
   MD4Update(context, PADDING, padLen);
 
   /* Append length (before padding) */
   MD4Update (context, bits, 8);
   /* Store state in digest */
-  Encode (digest, context->state, 16);
+  memcpy(digest, context->state, 16);
 }
 
 
