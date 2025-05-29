@@ -132,9 +132,9 @@ static void MD4Transform (u32* state, u8* block) {
 
 
 void MD4(char* msg, u64 len, u8* md) {
-  // pad to divisible by 64, pad at least one byte
-  u8  P  = 64 - (len % 64); 
-  u64 N  = len + P;
+  // pad to 56 mod 64, padding at least one byte, then add 8
+  u64 P  = (len < 56) ? (56 - len) : (120 - len);
+  u64 N  = len + P + 8;
   u8* M  = malloc(N); // padded msg 
 
   // 3.1 Step 1. Append Padding Bits
@@ -170,31 +170,20 @@ void MD4(char* msg, u64 len, u8* md) {
 
 int main() {
   u8* tests[] = {
-    /*
     "",
     "a",
     "abc",
     "message digest",
     "abcdefghijklmnopqrstuvwxyz",
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012",
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123",
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234",
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345",
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123467",
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234678",
-    "123456789012345678901234567890123456789012345678901234567890123456789",
-    "1234567890123456789012345678901234567890123456789012345678901234567890123456789",
     "12345678901234567890123456789012345678901234567890123456789012345678901234567890",
-    */
-    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
   };
   u64 num_tests = sizeof(tests)/sizeof(u8*);
   u8 md[16];
   for (u64 i = 0; i < num_tests; i++) {
     u64 len = strlen(tests[i]);
     MD4(tests[i], len, md);
-    // printf("msg (%d)=\n  %s\n", len, tests[i]);
-    print_hexstring(NULL, md, 16);
+    printf("msg (%d)=\n  %s\n", len, tests[i]);
+    print_hexstring("md=", md, 16);
   }
 }
