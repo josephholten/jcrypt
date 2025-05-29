@@ -126,7 +126,9 @@ static void MD4Transform (u32* state, u8* block) {
   state[3] += d;
 }
 
-void MD4(char* msg, u64 len, u8* md) {
+
+
+void MD4(u8* msg, u64 len, u8* md) {
   // pad to 56 mod 64, padding at least one byte, then add 8
   u64 mlen = len % 64;
   u64 P  = (mlen < 56) ? (56 - mlen) : (56 + 64 - mlen);
@@ -153,6 +155,7 @@ void MD4(char* msg, u64 len, u8* md) {
   u32* state = (u32*)init;
 
   // 3.4 Step 4. Process Message in 16-Word Blocks
+  //   Word = u32
   for (u64 i = 0; i < N; i += 64)
     MD4Transform(state,&M[i]);
 
@@ -160,6 +163,51 @@ void MD4(char* msg, u64 len, u8* md) {
   memcpy(md, state, 16);
   free(M);
 }
+
+
+
+void MD4v2(u8* msg, u64 len, u8* md) {
+  // 3.3 Step 3. Initialize MD Buffer
+  u8 init[16] = {
+    0x01, 0x23, 0x45, 0x67,
+    0x89, 0xab, 0xcd, 0xef,
+    0xfe, 0xdc, 0xba, 0x98,
+    0x76, 0x54, 0x32, 0x10,
+  };
+  u32* state = (u32*)init;
+
+  // 3.4 Step 4. Process Message in 16-Word Blocks
+  //   as many 16-Word blocks as are available unpadded
+  u64 i = 0;
+  for (; i + 64 <= len; i += 64)
+    MD4Transform(state, msg+i);
+
+  u8 buf[128] = {0};
+
+  // copy out remaining
+  const u64 rem = len - i;
+  memcpy(buf, msg+i, rem);
+
+  // pad to 56 mod 64, padding at least one byte, then add 8
+  const u64 pad = (rem < 56) ? (56 - rem) : (56+64 - rem);
+
+  // 3.1 Step 1. Append Padding Bits
+  buf[rem] = 0x80; // highest bit set
+
+  // 3.2 Step 2. Append Length
+  //   b in bits in little-endian
+  u64* pb = (u64*)(buf+rem+pad);
+  *pb = len*8;
+
+  // transform the padding and length
+  MD4Transform(state,buf);
+  if (rem+pad+8 == 128)
+    MD4Transform(state,buf+64);
+
+  // 3.5 Step 5. Output
+  memcpy(md, state, 16);
+}
+
 
 
 int main() {
@@ -176,7 +224,7 @@ int main() {
   u8 md[16];
   for (u64 i = 0; i < num_tests; i++) {
     u64 len = strlen(tests[i]);
-    MD4(tests[i], len, md);
+    MD4v2((u8*)tests[i], len, md);
     printf("msg (%ld)=\n  %s\n", len, tests[i]);
     print_hexstring("md=", md, 16);
   }
