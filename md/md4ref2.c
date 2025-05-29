@@ -147,11 +147,6 @@ static void MD4Transform (u32* state, u8* block) {
   GG (c, d, a, b, x[11], S23); /* 31 */
   GG (b, c, d, a, x[15], S24); /* 32 */
 
-
-
-
-
-
   /* Round 3 */
   HH (a, b, c, d, x[ 0], S31); /* 33 */
   HH (d, a, b, c, x[ 8], S32); /* 34 */
@@ -174,16 +169,8 @@ static void MD4Transform (u32* state, u8* block) {
   state[1] += b;
   state[2] += c;
   state[3] += d;
-
-  /* Zeroize sensitive information.
-   */
-  memset(x, 0, sizeof(x));
 }
 
-/* MD4 block update operation. Continues an MD4 message-digest
-     operation, processing another message block, and updating the
-     context.
- */
 void MD4Update (MD4_CTX* context, u8* input, u32 inputLen) {
   u32 i, index, partLen;
 
@@ -214,14 +201,10 @@ void MD4Update (MD4_CTX* context, u8* input, u32 inputLen) {
   memcpy(&context->buffer[index], &input[i], inputLen-i);
 }
 
-/* MD4 finalization. Ends an MD4 message-digest operation, writing the
-     the message digest and zeroizing the context.
- */
 void MD4Final (u8* digest, MD4_CTX* context) {
   u8 bits[8];
   u32 index, padLen;
 
-  /* Save number of bits */
   Encode (bits, context->count, 8);
 
   /* Pad out to 56 mod 64.
@@ -234,15 +217,6 @@ void MD4Final (u8* digest, MD4_CTX* context) {
   MD4Update (context, bits, 8);
   /* Store state in digest */
   Encode (digest, context->state, 16);
-
-  /* Zeroize sensitive information.
-   */
-  memset(context, 0, sizeof(*context));
-
-
-
-
-
 }
 
 
@@ -266,27 +240,13 @@ static void MDString (char* string) {
 }
 
 int main() {
-  /*
   MDString("");
   MDString("a");
   MDString("abc");
   MDString("message digest");
   MDString("abcdefghijklmnopqrstuvwxyz");
-  MDString("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz");
-  MDString("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012");
-  */
-  MDString("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123");
-  MDString("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234");
-  MDString("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345");
-  MDString("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456");
-  MDString("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567");
-  MDString("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345678");
-  MDString("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345678901");
-  MDString("123456789012345678901234567890123456789012345678901234567890123456789");
-  /*
-  MDString("1234567890123456789012345678901234567890123456789012345678901234567890123456789");
+  MDString("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789");
   MDString("12345678901234567890123456789012345678901234567890123456789012345678901234567890");
-  */
 }
 
 
