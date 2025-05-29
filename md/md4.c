@@ -63,9 +63,8 @@ void print_hexstring(char* msg, u8* hs, u64 len) {
 
 
 static void MD4Transform (u32* state, u8* block) {
-  u32 a = state[0], b = state[1], c = state[2], d = state[3], x[16];
-
-  memcpy(x, block, 64);
+  u32 a = state[0], b = state[1], c = state[2], d = state[3];
+  u32* x = (u32*) block;
 
   /* Round 1 */
   FF (a, b, c, d, x[ 0], S11); /* 1 */
@@ -127,10 +126,6 @@ static void MD4Transform (u32* state, u8* block) {
   state[3] += d;
 }
 
-
-
-
-
 void MD4(char* msg, u64 len, u8* md) {
   // pad to 56 mod 64, padding at least one byte, then add 8
   u64 P  = (len < 56) ? (56 - len) : (120 - len);
@@ -143,9 +138,9 @@ void MD4(char* msg, u64 len, u8* md) {
   M[len] = 1<<7; // highest order bit set
 
   // 3.2 Step 2. Append Length
-  //   in little-endian
-  u64 B = len*8;
-  memcpy(M+N-sizeof(u64), &B, sizeof(u64));
+  //   in bits in little-endian
+  u64* pB = (u64*)(M+len+P);
+  *pB = len*8;
 
   // 3.3 Step 3. Initialize MD Buffer
   u8 init[16] = {
@@ -157,20 +152,17 @@ void MD4(char* msg, u64 len, u8* md) {
   u32* state = (u32*)init;
 
   // 3.4 Step 4. Process Message in 16-Word Blocks
-  u32 x[16];
-  for (u64 i = 0; i < N; i += 64) {
+  for (u64 i = 0; i < N; i += 64)
     MD4Transform(state,&M[i]);
-  }
 
   // 3.5 Step 5. Output
   memcpy(md, state, 16);
-  memset(x,0,16);
   free(M);
 }
 
 
 int main() {
-  u8* tests[] = {
+  char* tests[] = {
     "",
     "a",
     "abc",
@@ -184,7 +176,7 @@ int main() {
   for (u64 i = 0; i < num_tests; i++) {
     u64 len = strlen(tests[i]);
     MD4(tests[i], len, md);
-    printf("msg (%d)=\n  %s\n", len, tests[i]);
+    printf("msg (%ld)=\n  %s\n", len, tests[i]);
     print_hexstring("md=", md, 16);
   }
 }

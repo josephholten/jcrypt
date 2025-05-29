@@ -72,7 +72,7 @@ void MD2(u8* msg, u64 len, u8* md) {
   for (u64 i = 0; i < N/16; i++) {
     for (u64 j = 0; j < 16; j++) {
       u8 c = M[i*16+j];
-      C[j] ^= S[M[i*16+j] ^ L];
+      C[j] ^= S[c ^ L];
       L = C[j];
     }
   }
@@ -103,7 +103,7 @@ void MD2(u8* msg, u64 len, u8* md) {
 
 
 int main() {
-  u8* tests[] = {
+  char* tests[] = {
     "",
     "a",
     "abc",
@@ -112,12 +112,12 @@ int main() {
     "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789",
     "12345678901234567890123456789012345678901234567890123456789012345678901234567890",
   };
-  u64 num_tests = sizeof(tests)/sizeof(u8*);
+  u64 num_tests = sizeof(tests)/sizeof(char*);
   u8 md[16];
   for (u64 i = 0; i < num_tests; i++) {
     u64 len = strlen(tests[i]);
-    MD2(tests[i], len, md);
-    printf("msg (%d)=\n  %s\n", len, tests[i]);
+    MD2((u8*)tests[i], len, md);
+    printf("msg (%ld)=\n  %s\n", len, tests[i]);
     print_hexstring("md=", md, 16);
   }
 }
