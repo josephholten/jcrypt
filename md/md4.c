@@ -148,12 +148,13 @@ void MD4(char* msg, u64 len, u8* md) {
   memcpy(M+N-sizeof(u64), &B, sizeof(u64));
 
   // 3.3 Step 3. Initialize MD Buffer
-  u32 state[4] = {
-    0x67452301,   
-    0xefcdab89,
-    0x98badcfe,
-    0x10325476,
+  u8 init[16] = {
+    0x01, 0x23, 0x45, 0x67,
+    0x89, 0xab, 0xcd, 0xef,
+    0xfe, 0xdc, 0xba, 0x98,
+    0x76, 0x54, 0x32, 0x10,
   };
+  u32* state = (u32*)init;
 
   // 3.4 Step 4. Process Message in 16-Word Blocks
   u32 x[16];
