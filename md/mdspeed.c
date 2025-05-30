@@ -23,7 +23,7 @@ int main() {
   u64 n = 128;
 
   u8 md[16];
-  clock_t tMD2, tMD4, tMD4v2;
+  clock_t tMD2, tMD4, tMD4v2, tMD4v3;
   printf("CLOCKS_PER_SEC = %ld\n", CLOCKS_PER_SEC);
 
   srandom(0);
@@ -43,10 +43,13 @@ int main() {
   tMD4 = timer();
   MD4v2(data, N, md);
   tMD4v2 = timer();
+  MD4v3(data, N, md);
+  tMD4v3 = timer();
 
   printf("MD2   = %.5e B/s\n", N / (double)tMD2 * CLOCKS_PER_SEC);
   printf("MD4   = %.5e B/s\n", N / (double)tMD4 * CLOCKS_PER_SEC);
   printf("MD4v2 = %.5e B/s\n", N / (double)tMD4v2 * CLOCKS_PER_SEC);
+  printf("MD4v3 = %.5e B/s\n", N / (double)tMD4v3 * CLOCKS_PER_SEC);
 
   printf("short strings\n");
   
@@ -62,9 +65,15 @@ int main() {
     MD4v2(data, n, md);
   tMD4v2 = timer();
 
+  for (u64 i = 0; i + n < N; i += n)
+    MD4v3(data, n, md);
+  tMD4v3 = timer();
+
+
   printf("MD2   = %.5e B/s\n", N / (double)tMD2 * CLOCKS_PER_SEC);
   printf("MD4   = %.5e B/s\n", N / (double)tMD4 * CLOCKS_PER_SEC);
   printf("MD4v2 = %.5e B/s\n", N / (double)tMD4v2 * CLOCKS_PER_SEC);
+  printf("MD4v3 = %.5e B/s\n", N / (double)tMD4v3 * CLOCKS_PER_SEC);
 
 
 

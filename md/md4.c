@@ -104,6 +104,60 @@ static void MD4Transform (u32* state, u8* block) {
 }
 
 
+static void MD4Transform2(u32* state, u8* block) {
+  u32 a = state[0], b = state[1], c = state[2], d = state[3];
+  u32* x = (u32*) block;
+
+  u8 ks[48] = {
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+    0, 4, 8, 12, 1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15,
+    0, 8, 4, 12, 2, 10, 6, 14, 1, 9, 5, 13, 3, 11, 7, 15,
+  };
+
+  u8 ss[48] = {
+    S11, S12, S13, S14,
+    S11, S12, S13, S14,
+    S11, S12, S13, S14,
+    S11, S12, S13, S14,
+
+    S21, S22, S23, S24,
+    S21, S22, S23, S24,
+    S21, S22, S23, S24,
+    S21, S22, S23, S24,
+
+    S31, S32, S33, S34,
+    S31, S32, S33, S34,
+    S31, S32, S33, S34,
+    S31, S32, S33, S34,
+  };
+
+  // 48 rounds
+  for (u64 i = 0; i < 48; i++) {
+
+    if (i < 16) {
+      FF(a,b,c,d,x[ks[i]],ss[i]);
+    } else if (i < 32) {
+      GG(a,b,c,d,x[ks[i]],ss[i]);
+    } else {
+      HH(a,b,c,d,x[ks[i]],ss[i]);
+    }
+
+    // rotate registers
+    u32 temp = a;
+    a = b;
+    b = c;
+    c = d;
+    d = temp;
+  }
+
+  state[0] += a;
+  state[1] += b;
+  state[2] += c;
+  state[3] += d;
+}
+
+
+
 
 void MD4(u8* msg, u64 len, u8* md) {
   // pad to 56 mod 64, padding at least one byte, then add 8
@@ -158,6 +212,48 @@ void MD4v2(u8* msg, u64 len, u8* md) {
   u64 i = 0;
   for (; i + 64 <= len; i += 64)
     MD4Transform(state, msg+i);
+
+  u8 buf[128] = {0};
+
+  // copy out remaining
+  const u64 rem = len - i;
+  memcpy(buf, msg+i, rem);
+
+  // pad to 56 mod 64, padding at least one byte, then add 8
+  const u64 pad = (rem < 56) ? (56 - rem) : (56+64 - rem);
+
+  // 3.1 Step 1. Append Padding Bits
+  buf[rem] = 0x80; // highest bit set
+
+  // 3.2 Step 2. Append Length
+  //   b in bits in little-endian
+  u64* pb = (u64*)(buf+rem+pad);
+  *pb = len*8;
+
+  // transform the padding and length
+  MD4Transform(state,buf);
+  if (rem+pad+8 == 128)
+    MD4Transform(state,buf+64);
+
+  // 3.5 Step 5. Output
+  memcpy(md, state, 16);
+}
+
+void MD4v3(u8* msg, u64 len, u8* md) {
+  // 3.3 Step 3. Initialize MD Buffer
+  u8 init[16] = {
+    0x01, 0x23, 0x45, 0x67,
+    0x89, 0xab, 0xcd, 0xef,
+    0xfe, 0xdc, 0xba, 0x98,
+    0x76, 0x54, 0x32, 0x10,
+  };
+  u32* state = (u32*)init;
+
+  // 3.4 Step 4. Process Message in 16-Word Blocks
+  //   as many 16-Word blocks as are available unpadded
+  u64 i = 0;
+  for (; i + 64 <= len; i += 64)
+    MD4Transform2(state, msg+i);
 
   u8 buf[128] = {0};
 

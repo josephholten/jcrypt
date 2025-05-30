@@ -18,7 +18,7 @@ int main() {
   u8 md[16];
   for (u64 i = 0; i < num_tests; i++) {
     u64 len = strlen(tests[i]);
-    MD4v2((u8*)tests[i], len, md);
+    MD4v3((u8*)tests[i], len, md);
     printf("msg (%ld)=\n  %s\n", len, tests[i]);
     print_hexstring("md=", md, 16);
   }
